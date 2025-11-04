@@ -1,0 +1,50 @@
+data:
+  dataset_type: ccd
+  train_manifest: data/manifests/ccd_train.csv
+  val_manifest: data/manifests/ccd_val.csv
+  frames_root: data/manifests/car-crash-dataset-ccd/CrashBest
+  clip_len: 16
+  fps: 10.0
+  frame_size: 224
+  lead_time_seconds: 1.5
+  max_offset_seconds: 0.5
+  num_workers: 8
+  pin_memory: true
+  cache_frames: false
+  augmentation:
+    random_horizontal_flip: true
+    temporal_jitter: 1
+
+model:
+  backbone: videomae_small_patch16_224
+  pretrained: true
+  dropout: 0.2
+  freeze_backbone_layers: 0
+
+optim:
+  name: adamw
+  lr: 3.0e-5
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+
+scheduler:
+  name: cosine
+  warmup_epochs: 2
+  min_lr: 1.0e-6
+
+train:
+  seed: 42
+  batch_size: 4
+  max_epochs: 20
+  grad_clip: 1.0
+  accumulation_steps: 1
+  eval_interval: 1
+  save_interval: 1
+  output_dir: outputs/ccd_baseline
+  checkpoint_path: null
+  log_interval: 20
+  pos_weight: null
+  lead_time_thresholds: [0.5, 1.0]
+  use_amp: true
+

@@ -13,6 +13,8 @@ import yaml
 class DataConfig:
     train_manifest: str
     val_manifest: str
+    dataset_type: str = "dad"
+    frames_root: Optional[str] = None
     clip_len: int = 16
     fps: float = 8.0
     frame_size: int = 224

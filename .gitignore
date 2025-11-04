@@ -12,8 +12,12 @@ dist/
 logs/
 outputs/
 checkpoints/
-data/
-!data/.gitkeep
+/data/
+!/data/.gitkeep
+!/data/manifests/
+/data/manifests/*
+!/data/manifests/.gitkeep
+!/data/manifests/*.py
 wandb/
 .DS_Store
 Thumbs.db
