@@ -120,7 +120,7 @@ class CCDDataset(Dataset[Dict[str, Any]]):
             "label": torch.tensor(sample.label, dtype=torch.float32),
             "time_to_event": torch.tensor(time_to_event, dtype=torch.float32),
             "metadata": sample.metadata,
-            "path": str(self.frames_root / sample.vidname),
+            "path": str(self.frames_root / f"C_{sample.vidname}_*.jpg"),
         }
 
     def _sample_indices(self, sample: CCDSample) -> np.ndarray:
