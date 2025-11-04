@@ -64,6 +64,10 @@ To train on CCD image sequences use the dedicated configuration:
 python train.py --config configs/ccd_baseline.yaml
 ```
 
+## Results
+
+- CCD baseline (`configs/ccd_baseline.yaml`) using `videomae_small_patch16_224` with Hugging Face checkpoint `MCG-NJU/videomae-small-finetuned-kinetics` achieved perfect validation metrics on the provided split: AP=1.0, precision@0.50=1.0, recall@0.50=1.0, F1@0.50=1.0. Run artifacts (checkpoints and TensorBoard) are stored under `outputs/ccd_baseline/`.
+
 ### Backbone provider options
 
 - The default configs use Hugging Face checkpoints (`model.provider: huggingface`, `model.hf_name: MCG-NJU/videomae-small-finetuned-kinetics`), which requires the extra dependencies bundled in `requirements.txt` (`transformers`, `accelerate`, `av`, `decord`).

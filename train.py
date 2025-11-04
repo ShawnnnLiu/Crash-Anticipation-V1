@@ -102,7 +102,7 @@ def main() -> None:
     optimizer = create_optimizer(model, exp_config)
     steps_per_epoch = max(len(train_loader) // exp_config.train.accumulation_steps, 1)
     scheduler = create_scheduler(optimizer, exp_config, steps_per_epoch)
-    scaler = torch.cuda.amp.GradScaler(enabled=exp_config.train.use_amp and device.type == "cuda")
+    scaler = torch.amp.GradScaler("cuda", enabled=exp_config.train.use_amp and device.type == "cuda")
 
     start_epoch = 0
     best_metric = float("-inf")

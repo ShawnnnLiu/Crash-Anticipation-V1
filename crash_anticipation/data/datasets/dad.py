@@ -220,6 +220,21 @@ class DADDataset(Dataset[Dict[str, Any]]):
         return stacked
 
 
+def collate_dad(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
+    videos = torch.stack([item["video"] for item in batch])
+    labels = torch.stack([item["label"] for item in batch])
+    time_to_event = torch.stack([item["time_to_event"] for item in batch])
+    metadata = [item["metadata"] for item in batch]
+    paths = [item["path"] for item in batch]
+    return {
+        "video": videos,
+        "label": labels,
+        "time_to_event": time_to_event,
+        "metadata": metadata,
+        "path": paths,
+    }
+
+
 def _read_image(path: Path) -> np.ndarray:
     if cv2 is None:
         raise RuntimeError("OpenCV is required for reading frame directories")
@@ -262,20 +277,6 @@ def build_dataloaders(
         augmentation={},
     )
 
-    def collate(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
-        videos = torch.stack([item["video"] for item in batch])
-        labels = torch.stack([item["label"] for item in batch])
-        time_to_event = torch.stack([item["time_to_event"] for item in batch])
-        metadata = [item["metadata"] for item in batch]
-        paths = [item["path"] for item in batch]
-        return {
-            "video": videos,
-            "label": labels,
-            "time_to_event": time_to_event,
-            "metadata": metadata,
-            "path": paths,
-        }
-
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
@@ -283,7 +284,7 @@ def build_dataloaders(
         num_workers=data_config.num_workers,
         pin_memory=data_config.pin_memory,
         drop_last=True,
-        collate_fn=collate,
+        collate_fn=collate_dad,
     )
 
     val_loader = DataLoader(
@@ -293,7 +294,7 @@ def build_dataloaders(
         num_workers=data_config.num_workers,
         pin_memory=data_config.pin_memory,
         drop_last=False,
-        collate_fn=collate,
+        collate_fn=collate_dad,
     )
 
     return train_loader, val_loader
