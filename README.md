@@ -6,7 +6,7 @@ Baseline training framework for crash anticipation on the Dashcam Accident Datas
 
 - Video clip sampling utilities for DAD manifests and CCD image sequences with configurable lead-time sampling.
 - Preprocessing pipeline for RGB frames (8–12 fps, 224p) with lightweight augmentations.
-- VideoMAE-S backbone with a binary anticipation head and configurable optimizer/scheduler.
+- VideoMAE-S backbones available through Hugging Face Transformers (default) or timm for quick experimentation.
 - Training script with AMP support, gradient accumulation, TensorBoard logging, and checkpointing.
 - Evaluation metrics including AP, F1, and lead-time recall.
 
@@ -63,6 +63,11 @@ To train on CCD image sequences use the dedicated configuration:
 ```bash
 python train.py --config configs/ccd_baseline.yaml
 ```
+
+### Backbone provider options
+
+- The default configs use Hugging Face checkpoints (`model.provider: huggingface`, `model.hf_name: MCG-NJU/videomae-small-finetuned-kinetics`), which requires the extra dependencies bundled in `requirements.txt` (`transformers`, `accelerate`, `av`, `decord`).
+- To revert to timm-based VideoMAE, set `model.provider=timm` (and optionally adjust `model.backbone`). This path still expects the model name to be available in your installed timm build.
 
 ## Project Structure
 

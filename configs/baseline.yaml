@@ -19,6 +19,8 @@ model:
   pretrained: true
   dropout: 0.2
   freeze_backbone_layers: 0
+  provider: huggingface
+  hf_name: MCG-NJU/videomae-small-finetuned-kinetics
 
 optim:
   name: adamw

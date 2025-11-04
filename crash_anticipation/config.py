@@ -33,6 +33,8 @@ class ModelConfig:
     pretrained: bool = True
     dropout: float = 0.2
     freeze_backbone_layers: int = 0
+    provider: str = "timm"
+    hf_name: str = "MCG-NJU/videomae-small"
 
 
 @dataclass
