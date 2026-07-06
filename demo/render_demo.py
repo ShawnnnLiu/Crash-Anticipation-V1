@@ -580,6 +580,7 @@ def main() -> None:
     parser.add_argument("--auto", type=int, default=0, help="Auto-select N presentable CCD val clips")
     parser.add_argument("--scan", type=int, default=80, help="How many val clips to scan for --auto")
     parser.add_argument("--include-negative", action="store_true", help="Also render a DAD normal clip")
+    parser.add_argument("--negatives", type=int, default=0, help="Render N DAD normal clips (spread over the test set)")
     parser.add_argument("--no-symbolic", action="store_true", help="Disable YOLO/tracking overlays")
     parser.add_argument("--gif", action="store_true", help="Also export a GIF per clip")
     parser.add_argument("--out_dir", type=str, default="outputs/demos")
@@ -607,11 +608,13 @@ def main() -> None:
     if args.auto:
         print(f"Scanning {args.scan} validation clips for presentable stories...")
         targets += pick_presentable(ccd_records[: args.scan], anticipator, fps, args.auto)
-    if args.include_negative:
+    n_neg = max(args.negatives, 1 if args.include_negative else 0)
+    if n_neg:
         negatives = load_dad_negative_records(
             cfg.data.dad_test_negatives_root, frame_stride=cfg.data.dad_frame_stride
         )
-        targets.append(negatives[3])
+        step = max(len(negatives) // (n_neg + 1), 1)
+        targets += [negatives[min((i + 1) * step, len(negatives) - 1)] for i in range(n_neg)]
 
     if not targets:
         parser.error("Nothing to render: pass --ccd, --auto N and/or --include-negative")
