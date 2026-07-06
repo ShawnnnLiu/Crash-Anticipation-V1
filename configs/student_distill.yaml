@@ -1,0 +1,61 @@
+# MobileNetV2 + GRU student distilled from the VideoMAE teacher.
+#
+# ~10x fewer parameters and causal streaming inference (one MobileNet forward
+# per new frame) for embedded/automotive deployment.
+
+data:
+  dataset_type: windows
+  train_manifest: data/manifests/ccd_train.csv
+  val_manifest: data/manifests/ccd_val.csv
+  frames_root: data/manifests/car-crash-dataset-ccd/CrashBest
+  dad_negatives_root: data/manifests/Anticipating-Accidents-in-Dashcam-Videos/videos/training/negative
+  dad_test_negatives_root: data/manifests/Anticipating-Accidents-in-Dashcam-Videos/videos/testing/negative
+  dad_frame_stride: 2
+  clip_len: 16
+  fps: 10.0
+  frame_size: 224
+  pos_horizon_seconds: 1.5
+  neg_horizon_seconds: 2.5
+  tau_seconds: 1.2
+  min_context_frames: 8
+  windows_per_video: 2
+  num_workers: 8
+  pin_memory: true
+  augmentation:
+    random_horizontal_flip: true
+
+model:
+  type: mobilenet_gru
+  pretrained: true
+  dropout: 0.2
+  temporal_hidden: 256
+
+optim:
+  name: adamw
+  lr: 3.0e-4
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+
+scheduler:
+  name: cosine
+  warmup_epochs: 1
+  min_lr: 1.0e-6
+
+train:
+  seed: 42
+  batch_size: 16
+  max_epochs: 15
+  grad_clip: 1.0
+  accumulation_steps: 1
+  eval_interval: 1
+  save_interval: 5
+  output_dir: outputs/student_mobilenet_gru
+  checkpoint_path: null
+  log_interval: 50
+  lead_time_thresholds: [0.5, 1.0, 1.5]
+  use_amp: true
+  distill_checkpoint: outputs/videomae_anticipation/best.pt
+  distill_config: configs/anticipation.yaml
+  distill_alpha: 0.5
+  distill_temperature: 2.0

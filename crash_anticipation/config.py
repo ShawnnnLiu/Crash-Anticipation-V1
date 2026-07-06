@@ -25,16 +25,27 @@ class DataConfig:
     pin_memory: bool = True
     cache_frames: bool = False
     augmentation: Dict[str, Any] = field(default_factory=dict)
+    # Windowed anticipation formulation (dataset_type: windows)
+    dad_negatives_root: Optional[str] = None
+    dad_test_negatives_root: Optional[str] = None
+    dad_frame_stride: int = 2
+    pos_horizon_seconds: float = 1.5
+    neg_horizon_seconds: float = 2.5
+    tau_seconds: float = 1.2
+    min_context_frames: int = 8
+    windows_per_video: int = 1
 
 
 @dataclass
 class ModelConfig:
+    type: str = "videomae"
     backbone: str = "videomae_small_patch16_224"
     pretrained: bool = True
     dropout: float = 0.2
     freeze_backbone_layers: int = 0
     provider: str = "timm"
     hf_name: str = "MCG-NJU/videomae-small"
+    temporal_hidden: int = 256
 
 
 @dataclass
@@ -70,6 +81,11 @@ class TrainingConfig:
         default_factory=lambda: [0.5, 1.0, 2.0, 3.0]
     )
     use_amp: bool = True
+    # Knowledge distillation (student training)
+    distill_checkpoint: Optional[str] = None
+    distill_config: Optional[str] = None
+    distill_alpha: float = 0.5
+    distill_temperature: float = 2.0
 
 
 @dataclass

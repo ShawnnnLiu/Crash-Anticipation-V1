@@ -7,12 +7,13 @@ from typing import Any, Dict, Optional
 
 import torch
 from torch import nn
-from torch.cuda.amp import GradScaler, autocast
+from torch.amp import GradScaler, autocast
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR, _LRScheduler
 
 from ..config import ExperimentConfig
 from ..utils import AverageMeter, move_to_device, save_checkpoint
+from .losses import AnticipationLoss, DistillationLoss
 from .metrics import compute_classification_metrics, compute_lead_time_metrics
 
 
@@ -96,15 +97,17 @@ def train_one_epoch(
     scaler: Optional[GradScaler] = None,
     scheduler: Optional[_LRScheduler] = None,
     writer: Optional["SummaryWriter"] = None,
+    teacher: Optional[nn.Module] = None,
 ) -> Dict[str, float]:
     model.train()
     loss_meter = AverageMeter()
 
     train_cfg = cfg.train
     accumulation_steps = max(train_cfg.accumulation_steps, 1)
-    criterion = nn.BCEWithLogitsLoss(
-        pos_weight=torch.tensor(train_cfg.pos_weight, device=device)
-        if train_cfg.pos_weight
+    criterion = AnticipationLoss()
+    distill_criterion = (
+        DistillationLoss(train_cfg.distill_alpha, train_cfg.distill_temperature)
+        if teacher is not None
         else None
     )
 
@@ -114,10 +117,16 @@ def train_one_epoch(
         batch = move_to_device(batch, device)
         inputs = batch["video"]
         labels = batch["label"]
+        weights = batch.get("weight")
 
-        with autocast(enabled=train_cfg.use_amp and device.type == "cuda"):
+        with autocast("cuda", enabled=train_cfg.use_amp and device.type == "cuda"):
             outputs = model(inputs)["logits"]
-            loss = criterion(outputs, labels)
+            if distill_criterion is not None:
+                with torch.no_grad():
+                    teacher_logits = teacher(inputs)["logits"]
+                loss = distill_criterion(outputs, teacher_logits, labels, weights)
+            else:
+                loss = criterion(outputs, labels, weights)
             loss = loss / accumulation_steps
 
         if scaler is not None and train_cfg.use_amp and device.type == "cuda":
@@ -170,11 +179,7 @@ def evaluate(
 ) -> Dict[str, float]:
     model.eval()
     loss_meter = AverageMeter()
-    criterion = nn.BCEWithLogitsLoss(
-        pos_weight=torch.tensor(cfg.train.pos_weight, device=device)
-        if cfg.train.pos_weight
-        else None
-    )
+    criterion = AnticipationLoss()
 
     all_logits = []
     all_labels = []
@@ -186,7 +191,7 @@ def evaluate(
             inputs = batch["video"]
             labels = batch["label"]
             outputs = model(inputs)["logits"]
-            loss = criterion(outputs, labels)
+            loss = criterion(outputs, labels, batch.get("weight"))
             loss_meter.update(loss.item(), inputs.size(0))
 
             all_logits.append(outputs.detach().cpu())

@@ -1,0 +1,62 @@
+# VideoMAE teacher on the windowed anticipation benchmark.
+#
+# Positives:  CCD crash videos (exact accident-onset frames, 10 fps).
+# Negatives:  DAD normal dashcam videos (true negatives, stride-2 -> 10 fps)
+#             plus CCD temporal negatives (same-domain windows ending >= 2.5 s
+#             before the accident) to block domain-shortcut learning.
+
+data:
+  dataset_type: windows
+  train_manifest: data/manifests/ccd_train.csv
+  val_manifest: data/manifests/ccd_val.csv
+  frames_root: data/manifests/car-crash-dataset-ccd/CrashBest
+  dad_negatives_root: data/manifests/Anticipating-Accidents-in-Dashcam-Videos/videos/training/negative
+  dad_test_negatives_root: data/manifests/Anticipating-Accidents-in-Dashcam-Videos/videos/testing/negative
+  dad_frame_stride: 2
+  clip_len: 16
+  fps: 10.0
+  frame_size: 224
+  pos_horizon_seconds: 1.5
+  neg_horizon_seconds: 2.5
+  tau_seconds: 1.2
+  min_context_frames: 8
+  windows_per_video: 2
+  num_workers: 8
+  pin_memory: true
+  augmentation:
+    random_horizontal_flip: true
+
+model:
+  type: videomae
+  backbone: videomae_small_patch16_224
+  pretrained: true
+  dropout: 0.2
+  freeze_backbone_layers: 0
+  provider: huggingface
+  hf_name: MCG-NJU/videomae-small-finetuned-kinetics
+
+optim:
+  name: adamw
+  lr: 3.0e-5
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+
+scheduler:
+  name: cosine
+  warmup_epochs: 1
+  min_lr: 1.0e-6
+
+train:
+  seed: 42
+  batch_size: 8
+  max_epochs: 10
+  grad_clip: 1.0
+  accumulation_steps: 1
+  eval_interval: 1
+  save_interval: 5
+  output_dir: outputs/videomae_anticipation
+  checkpoint_path: null
+  log_interval: 50
+  lead_time_thresholds: [0.5, 1.0, 1.5]
+  use_amp: true

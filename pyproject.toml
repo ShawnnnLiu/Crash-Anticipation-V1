@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "crash-anticipation"
-version = "0.1.0"
-description = "Baseline framework for crash anticipation on the DAD dataset"
+version = "0.2.0"
+description = "Neurosymbolic crash anticipation: online risk prediction from dashcam video with actionable, explainable avoidance advisories"
 readme = "README.md"
-requires-python = ">=3.9"
-authors = [{ name = "Crash Anticipation Team" }]
+requires-python = ">=3.10"
+authors = [{ name = "Shawn Liu" }]
 license = { text = "MIT" }
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -20,17 +20,17 @@ classifiers = [
 dependencies = [
     "torch>=2.2",
     "torchvision>=0.17",
-    "timm>=0.9.7",
     "opencv-python>=4.9",
     "numpy>=1.24",
     "pandas>=2.0",
     "pyyaml>=6.0",
     "scikit-learn>=1.3",
-    "decord>=0.6.0",
-    "av>=11.0.0",
-    "accelerate>=0.31.0",
     "transformers>=4.44",
-    "rich>=13.7",
+    "accelerate>=0.31.0",
+    "ultralytics>=8.3",
+    "lap>=0.5.12",
+    "pillow>=10.0",
+    "matplotlib>=3.8",
     "tensorboard>=2.15"
 ]
 

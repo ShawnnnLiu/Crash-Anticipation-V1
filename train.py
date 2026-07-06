@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from crash_anticipation.config import load_config
 from crash_anticipation.data import build_dataloaders
-from crash_anticipation.models import VideoMAEAnticipation
+from crash_anticipation.models import build_model
 from crash_anticipation.training import (
     create_optimizer,
     create_scheduler,
@@ -55,7 +55,7 @@ def main() -> None:
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/baseline.yaml",
+        default="configs/anticipation.yaml",
         help="Path to YAML config file",
     )
     parser.add_argument(
@@ -92,12 +92,25 @@ def main() -> None:
         len(val_loader),
     )
 
-    model = VideoMAEAnticipation.from_config(exp_config.model)
+    model = build_model(exp_config.model)
     model.to(device)
     logger.info(
         "Model loaded with %d trainable parameters",
         sum(p.numel() for p in model.parameters() if p.requires_grad),
     )
+
+    teacher = None
+    if exp_config.train.distill_checkpoint:
+        teacher_cfg_path = exp_config.train.distill_config or args.config
+        teacher_cfg = load_config(teacher_cfg_path, overrides={})
+        teacher = build_model(teacher_cfg.model)
+        teacher_ckpt = torch.load(exp_config.train.distill_checkpoint, map_location=device)
+        teacher.load_state_dict(teacher_ckpt["model_state"])
+        teacher.to(device)
+        teacher.eval()
+        for param in teacher.parameters():
+            param.requires_grad = False
+        logger.info("Distilling from teacher checkpoint %s", exp_config.train.distill_checkpoint)
 
     optimizer = create_optimizer(model, exp_config)
     steps_per_epoch = max(len(train_loader) // exp_config.train.accumulation_steps, 1)
@@ -130,6 +143,7 @@ def main() -> None:
             scaler=scaler,
             scheduler=scheduler,
             writer=writer,
+            teacher=teacher,
         )
         logger.info("Epoch %d train metrics: %s", epoch + 1, train_metrics)
 

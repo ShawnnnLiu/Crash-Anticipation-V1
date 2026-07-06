@@ -1,7 +1,5 @@
 """Dataset definitions for crash anticipation."""
 
-from .dad import DADDataset
-from .ccd import CCDDataset
+from .windows import AnticipationWindowDataset, VideoRecord
 
-__all__ = ["DADDataset", "CCDDataset"]
-
+__all__ = ["AnticipationWindowDataset", "VideoRecord"]
