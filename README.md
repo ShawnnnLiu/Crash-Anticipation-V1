@@ -12,7 +12,7 @@
 <p align="center">
   <img src="docs/media/normal.gif" alt="Normal driving contrast clip" width="850">
 </p>
-<p align="center"><i>Contrast case — a no-crash DAD test clip: risk stays flat, and the symbolic layer's constant-bearing test correctly refuses to flag a bus that looms only because we are passing it.</i></p>
+<p align="center"><i>Contrast case — a no-crash DAD test clip: risk stays flat, and the symbolic layer's projected-miss test (a scale-invariant constant-bearing rule) correctly refuses to flag a bus that looms only because we are passing it.</i></p>
 
 ---
 
@@ -78,7 +78,7 @@ flowchart LR
         V --> R[risk p_t]
     end
     subgraph Symbolic
-        Y --> D[track dynamics<br/>looming -> TTC, bearing, zone]
+        Y --> D[track dynamics<br/>looming -> TTC, projected miss, zone]
         D --> FA[object facts]
         R --> RE[rule engine]
         FA --> RE
@@ -90,7 +90,7 @@ flowchart LR
 
 **Neural risk.** A video encoder sees the last 1.6 s of frames and outputs the probability that a crash is imminent. Training uses an earliness-weighted BCE (after [Chan et al., 2016](https://github.com/smallcorgi/Anticipating-Accidents)): windows ending `tte` seconds before the accident get positive weight `exp(-tte/τ)` inside a 1.5 s anticipation horizon, windows ≥ 2.5 s before it are same-domain negatives, and the ambiguous band between contributes no gradient. Real negatives come from DAD's 1,130 no-crash dashcam videos.
 
-**Symbolic layer.** YOLO11n + ByteTrack maintain persistent tracks of road agents. For each track, monocular **time-to-collision** comes from the classical looming result `TTC = 1 / (d log s / dt)` (least-squares over a short history for jitter robustness), with a **constant-bearing, decreasing-range** test so that objects we merely pass — which also loom — are not flagged as collision threats. The rule engine fuses neural risk with these facts:
+**Symbolic layer.** YOLO11n + ByteTrack maintain persistent tracks of road agents. For each track, monocular **time-to-collision** comes from the classical looming result `TTC = 1 / (d log s / dt)` (least-squares over a short history for jitter robustness). Whether the object is actually converging on the ego vehicle is decided by projecting its track to the moment of closest approach: for constant relative velocity the lateral offset at that moment is `ẋ · TTC` in image pixels, and dividing by the object's own box width converts it to physical vehicle-widths without any depth estimate — a **scale-invariant constant-bearing test**. A car being overtaken one lane over projects to a ~2-width miss and stays quiet no matter how fast we close on it; a cut-in converging on our lane projects to a near-zero miss and alarms even while it drifts across the image. The rule engine fuses neural risk with these facts:
 
 | rule | condition | output |
 |---|---|---|
@@ -145,7 +145,7 @@ crash_anticipation/
   training/engine.py        train/eval loops
   inference/predictor.py    online sliding-window predictor (deployment path)
   symbolic/perception.py    YOLO11n + ByteTrack road-agent tracking
-  symbolic/dynamics.py      looming -> TTC, bearing, collision-course test
+  symbolic/dynamics.py      looming -> TTC, projected-miss collision-course test
   symbolic/rules.py         advisory rule engine (auditable decisions)
 configs/                    anticipation.yaml (teacher), student_distill.yaml
 demo/render_demo.py         HUD demo renderer (PIL supersampled overlays)

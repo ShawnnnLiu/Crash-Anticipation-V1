@@ -4,7 +4,7 @@ The neural model answers *"how dangerous is this moment?"* — this package
 answers *"what exactly is the threat and what should the driver do?"*:
 
     perception.py  detect + track road agents (YOLO + ByteTrack)
-    dynamics.py    tracks -> symbolic facts (TTC, bearing, closing speed)
+    dynamics.py    tracks -> symbolic facts (TTC, projected miss, heading)
     rules.py       facts x neural risk -> actionable advisory with rationale
 """
 

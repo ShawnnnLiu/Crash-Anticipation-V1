@@ -90,9 +90,20 @@ class AdvisoryEngine:
     # -- helpers -------------------------------------------------------------
 
     def _primary_threat(self, facts: List[ObjectFacts]) -> Optional[ObjectFacts]:
-        """Most urgent object: finite TTC first, then in-path, then apparent size."""
+        """Most urgent object: finite TTC first, then in-path, then apparent size.
 
-        candidates = [f for f in facts if f.heading in ("approaching", "crossing") or f.in_path]
+        Objects being passed ("passing" = looming but projected to miss) never
+        qualify; laterally moving objects qualify only while their drift
+        converges on the ego line. In-path objects are always watched.
+        """
+
+        candidates = [
+            f
+            for f in facts
+            if f.heading == "approaching"
+            or (f.heading == "crossing" and f.converging)
+            or f.in_path
+        ]
         if not candidates:
             return None
         return min(candidates, key=lambda f: (f.ttc_s, not f.in_path, -f.size_frac))

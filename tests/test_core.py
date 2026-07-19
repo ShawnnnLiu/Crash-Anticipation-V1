@@ -87,6 +87,14 @@ class TestTrackDynamics:
             facts = dynamics.update([det], (720, 1280))
         return facts[0]
 
+    @staticmethod
+    def _project(x_m, z_m, width_m=1.8, height_m=1.5, focal_px=1000.0, cx0=640.0, ground_y=500.0):
+        """Pinhole projection of a car at lateral offset x_m, depth z_m."""
+        w = focal_px * width_m / z_m
+        h = focal_px * height_m / z_m
+        cx = cx0 + focal_px * x_m / z_m
+        return [cx - w / 2, ground_y - h, cx + w / 2, ground_y]
+
     def test_head_on_approach_gets_finite_falling_ttc(self):
         # Box centered ahead, growing 12% per frame -> strong looming.
         boxes = []
@@ -111,6 +119,38 @@ class TestTrackDynamics:
             cx += 60
         fact = self._run(boxes)
         assert fact.ttc_s == float("inf")
+        assert fact.heading == "passing"
+
+    def test_overtaken_adjacent_lane_car_is_passing(self):
+        # Ego closes at 10 m/s on a car one lane over (3.5 m). It looms hard
+        # and barely drifts in the image, but its projected miss is ~2 car
+        # widths -> not a collision course.
+        boxes = [self._project(3.5, 30.0 - i) for i in range(10)]
+        fact = self._run(boxes)
+        assert fact.ttc_s == float("inf")
+        assert fact.heading == "passing"
+        assert fact.miss_widths > 1.5
+        assert not fact.in_path
+        assert not fact.converging
+
+    def test_cut_in_on_collision_course_gets_finite_ttc(self):
+        # Car merging from one lane over onto a corner-impact course
+        # (closest approach 0.9 m): lateral drift is visible, yet the
+        # projected miss stays ~0.5 widths -> alarm.
+        boxes = [self._project(3.5 - 0.13 * i, 16.0 - 0.8 * i) for i in range(10)]
+        fact = self._run(boxes)
+        assert fact.ttc_s < 2.5
+        assert fact.heading == "approaching"
+        assert fact.miss_widths < 1.5
+
+    def test_corridor_narrows_with_distance(self):
+        # A distant adjacent-lane car sits near the image center yet is NOT
+        # in-path; a car straight ahead at the same depth is.
+        adjacent = self._run([self._project(3.5, 40.0)] * 6)
+        ahead = self._run([self._project(0.0, 40.0)] * 6)
+        assert 0.30 < (adjacent.xyxy[0] + adjacent.xyxy[2]) / 2 / 1280 < 0.70
+        assert not adjacent.in_path
+        assert ahead.in_path
 
 
 class TestAdvisoryEngine:
@@ -127,6 +167,8 @@ class TestAdvisoryEngine:
             looming=0.8,
             lateral_v=0.0,
             size_frac=0.1,
+            miss_widths=0.2,
+            converging=True,
             heading="approaching",
         )
         base.update(kw)
@@ -153,6 +195,21 @@ class TestAdvisoryEngine:
     def test_moderate_risk_is_caution(self):
         adv = AdvisoryEngine().decide(0.5, [])
         assert adv.level == CAUTION
+
+    def test_passing_object_is_not_a_threat(self):
+        passing = self._fact(
+            heading="passing", ttc_s=float("inf"), miss_widths=2.1, converging=False, in_path=False
+        )
+        adv = AdvisoryEngine().decide(0.1, [passing])
+        assert adv.level == NORMAL
+        assert adv.threat is None
+
+    def test_crosser_is_threat_only_while_converging(self):
+        engine = AdvisoryEngine()
+        away = self._fact(heading="crossing", ttc_s=float("inf"), converging=False, in_path=False)
+        toward = self._fact(heading="crossing", ttc_s=float("inf"), converging=True, in_path=False)
+        assert engine._primary_threat([away]) is None
+        assert engine._primary_threat([toward]) is not None
 
 
 class TestAnticipationLoss:
